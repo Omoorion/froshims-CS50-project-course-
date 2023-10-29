@@ -1,5 +1,5 @@
 .env
-.flask_session
-.__pycache__
-.example.db
-.froshims.db
+flask_session
+__pycache__
+example.db
+froshims.db
