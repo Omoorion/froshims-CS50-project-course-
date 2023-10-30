@@ -4,7 +4,7 @@
 
     <h1>Register</h1>
     <form action="/register" method="post">
-        <input autocomplete="off" autofocus name="name" placeholder="Name" type="text">
+        <input autocomplete="off" autofocus id="name" name="name" placeholder="Name" type="text">
         <input autocomplete="off" autofocus name="password" placeholder="Password" type="password">
         <input autocomplete="off" autofocus name="email" placeholder="Email" type="text">
         {% for sport in sports %}
@@ -12,5 +12,8 @@
         {% endfor %}
         <input type="submit" value="Register">
     </form>
+    <p id="log"></p>
     <p>Already registered? <a href="/login">Log in</a>.</p>
+
+    <script src="/static/namequery.js"></script>
 {% endblock %}

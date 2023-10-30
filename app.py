@@ -49,7 +49,6 @@ def login():
     if request.method == "POST":
         name = request.form.get("name")
         password = request.form.get("password")
-        print(name + " " + password)
 
         conn = sqlite3.connect('froshims.db', check_same_thread=False)
         cursor = conn.cursor()
@@ -58,13 +57,9 @@ def login():
         isId = ""
         isAll = cursor.fetchall()
         if(isAll != []):
-            print("true")
             isName = isAll[0][0]
-            print(isName)
             isId = isAll[0][1]
-            print(isId)
         conn.close()
-        print("false")
 
         if isName != "" and isId != "":
             session["name"] = isName
@@ -87,32 +82,37 @@ def register():
         email= request.form.get("email")
         sport = request.form.get("sport")
 
-        if not name or not password or not email or sport not in SPORTS:
+        if not name or not password or sport not in SPORTS:
             return render_template("failure.html")
     
-        message = Message("you are registered!", recipients=[email])
-        mail.send(message)
         conn = sqlite3.connect('froshims.db', check_same_thread=False)
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO registrants (name, password, sport) VALUES(?, ?, ?)", (name, password, sport, ))
-        conn.commit()
-        cursor.execute("SELECT id FROM registrants WHERE name = ? AND password = ?", (name, password, ))
-        id = cursor.fetchall()[0][0]
-        conn.close()
-        session["id"] = id
-        session["name"] = name
-        session["sport"] = sport
 
-        return redirect("/")
+        cursor.execute("SELECT name FROM registrants WHERE name = ?", (name, ))
+        if(cursor.fetchall() == []):
+            cursor.execute("INSERT INTO registrants (name, password, sport) VALUES(?, ?, ?)", (name, password, sport, ))
+            conn.commit()
+            cursor.execute("SELECT id FROM registrants WHERE name = ? AND password = ?", (name, password, ))
+            id = cursor.fetchall()[0][0]
+            conn.close()
+            session["id"] = id
+            session["name"] = name
+            session["sport"] = sport
+
+            if email and email != "":
+                message = Message("you are registered!", recipients=[email])
+                mail.send(message)
+
+            return redirect("/")
+        else:
+            return render_template("failure.html")
     
     return render_template("register.html", sports=SPORTS)
 
 @app.route("/deregister", methods=["POST"])
 def deregister():
     id = request.form.get("id")
-    print(id)
     if id:
-        print("id exists")
         conn = sqlite3.connect('froshims.db', check_same_thread=False)
         cursor = conn.cursor()
         cursor.execute("DELETE FROM registrants WHERE id = ?;", (id,))
@@ -150,21 +150,22 @@ def update():
 
         conn = sqlite3.connect('froshims.db', check_same_thread=False)
         cursor = conn.cursor()
-        try:
-            cursor.execute("UPDATE registrants SET name='?', password='?', sport='?' WHERE id='?';",(name, password, sport, session.get("id"), ))
+        cursor.execute("SELECT name FROM registrants WHERE name = ?", (name, ))
+        if(cursor.fetchall() == []):
+            cursor.execute("UPDATE registrants SET name=?, sport=? WHERE id=? AND password=?;", (name, sport, session.get("id"), password, ))
             conn.commit()
             conn.close()
-        except sqlite3.Error as e:
-            print("SQLite error:", e)
 
-        if email and email != "":
-            message = Message("you updated your account!", recipients=[email])
-            mail.send(message)
+            if email and email != "":
+                message = Message("you updated your account!", recipients=[email])
+                mail.send(message)
 
-        session["name"] = name
-        session["sport"] = sport
+            session["name"] = name
+            session["sport"] = sport
 
-        return redirect("/")
+            return redirect("/")
+        else:
+            return render_template("failure.html")
     
     return render_template("update.html", sports=SPORTS)
 
@@ -173,6 +174,17 @@ def search():
     conn = sqlite3.connect('froshims.db', check_same_thread=False)
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM registrants WHERE name LIKE ?", ('%' + request.args.get('q') + '%',))
+    columns = [column[0] for column in cursor.description]
+    data = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    conn.close()
+    registrants=str(jsonify(data).data)[2:-3]
+    return registrants
+
+@app.route("/namecheck")
+def namecheck():
+    conn = sqlite3.connect('froshims.db', check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM registrants WHERE name=?", (request.args.get('q'),))
     columns = [column[0] for column in cursor.description]
     data = [dict(zip(columns, row)) for row in cursor.fetchall()]
     conn.close()

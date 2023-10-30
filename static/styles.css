@@ -8,3 +8,10 @@ a
 {
     color: rgb(255, 150, 0);
 }
+
+.error-text {
+    color: red;
+}
+.success-text {
+    color: lime;
+}

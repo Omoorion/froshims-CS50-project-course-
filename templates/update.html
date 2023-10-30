@@ -4,7 +4,7 @@
 
     <h1>Update</h1>
     <form action="/update" method="post">
-        <input autocomplete="off" autofocus name="name" placeholder="Name" type="text">
+        <input autocomplete="off" autofocus id="name" name="name" placeholder="Name" type="text">
         <input autocomplete="off" autofocus name="password" placeholder="Password" type="password">
         <input autocomplete="off" autofocus name="email" placeholder="Email" type="text">
         {% for sport in sports %}
@@ -12,4 +12,6 @@
         {% endfor %}
         <input type="submit" value="Update">
     </form>
+    <p id="log"></p>
+    <script src="/static/namequery.js"></script>
 {% endblock %}
