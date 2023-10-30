@@ -1,9 +1,14 @@
 body 
 {
-    background-color: brown;
+    background-color: rgb(0, 0, 50);
 }
 
-p, h1, ul 
+p, h1, ul, table 
 {
     color: white;
+}
+
+a
+{
+    color: rgb(255, 150, 0)
 }

@@ -33,7 +33,7 @@ def index():
     if not session.get("sport"):
         conn = sqlite3.connect('froshims.db', check_same_thread=False)
         cursor = conn.cursor()
-        sportDb = cursor.execute("SELECT sport FROM registrants WHERE name = ?", (session.get("name"),))
+        sportDb = cursor.execute("SELECT sport FROM registrants WHERE name = ? AND id = ?", (session.get("name"), session.get("id")))
         conn.close()
         sportValue = ""
         for sport in SPORTS:
@@ -48,13 +48,27 @@ def index():
 def login():
     if request.method == "POST":
         name = request.form.get("name")
+        password = request.form.get("password")
+        print(name + " " + password)
+
         conn = sqlite3.connect('froshims.db', check_same_thread=False)
         cursor = conn.cursor()
-        isName = cursor.execute("SELECT name FROM registrants WHERE name= ?", (name,))
+        cursor.execute("SELECT name, id FROM registrants WHERE name=? AND password=?;", (name, password, ))
+        isName = ""
+        isId = ""
+        isAll = cursor.fetchall()
+        if(isAll != []):
+            print("true")
+            isName = isAll[0][0]
+            print(isName)
+            isId = isAll[0][1]
+            print(isId)
         conn.close()
-        print(isName)
-        if isName is not None and isName != []:
-            session["name"] = name
+        print("false")
+
+        if isName != "" and isId != "":
+            session["name"] = isName
+            session["id"] = isId
             return redirect("/")
     
     return render_template("login.html")
@@ -69,19 +83,23 @@ def logout():
 def register():
     if request.method == "POST":
         name = request.form.get("name")
+        password = request.form.get("password")
         email= request.form.get("email")
         sport = request.form.get("sport")
 
-        if not name or sport not in SPORTS:
+        if not name or not password or not email or sport not in SPORTS:
             return render_template("failure.html")
     
         message = Message("you are registered!", recipients=[email])
         mail.send(message)
         conn = sqlite3.connect('froshims.db', check_same_thread=False)
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO registrants (name, sport) VALUES(?, ?)", (name, sport, ))
+        cursor.execute("INSERT INTO registrants (name, password, sport) VALUES(?, ?, ?)", (name, password, sport, ))
         conn.commit()
+        cursor.execute("SELECT id FROM registrants WHERE name = ? AND password = ?", (name, password, ))
+        id = cursor.fetchall()[0][0]
         conn.close()
+        session["id"] = id
         session["name"] = name
         session["sport"] = sport
 
@@ -100,6 +118,7 @@ def deregister():
         cursor.execute("DELETE FROM registrants WHERE id = ?;", (id,))
         conn.commit()
         conn.close()
+
     return redirect("/registrants")
 
 @app.route("/registrants")
@@ -113,6 +132,41 @@ def registrants():
     registrants = [dict(zip(columns, row)) for row in cursor.fetchall()]
     conn.close()
     return render_template("registrants.html", registrants=registrants)
+
+@app.route("/update", methods=["GET", "POST"])
+def update():
+    if not session.get("id") or session.get("id") == "":
+        return redirect("/login")
+
+    if request.method == "POST":
+        
+        name = request.form.get("name")
+        password = request.form.get("password")
+        sport = request.form.get("sport")
+        email = request.form.get("email")
+
+        if not name or not password or sport not in SPORTS:
+            return render_template("failure.html")
+
+        conn = sqlite3.connect('froshims.db', check_same_thread=False)
+        cursor = conn.cursor()
+        try:
+            cursor.execute("UPDATE registrants SET name='?', password='?', sport='?' WHERE id='?';",(name, password, sport, session.get("id"), ))
+            conn.commit()
+            conn.close()
+        except sqlite3.Error as e:
+            print("SQLite error:", e)
+
+        if email and email != "":
+            message = Message("you updated your account!", recipients=[email])
+            mail.send(message)
+
+        session["name"] = name
+        session["sport"] = sport
+
+        return redirect("/")
+    
+    return render_template("update.html", sports=SPORTS)
 
 @app.route("/search")
 def search():

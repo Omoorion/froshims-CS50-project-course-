@@ -7,6 +7,8 @@
             You are registered for {{ session["sport"] }}.
             <br />
             <a href="/logout">Log out</a>.
+            <br />
+            <a href="/update">Update</a>.
         </p>
         {% if session["name"] == "Omoor" %}
             <p>You are an Admin.</p>
@@ -16,7 +18,7 @@
         <p>
             You are not logged in.
             <br />
-            <a href="/">Log in</a>
+            <a href="/login">Log in</a>
         </p>
     {% endif %}
 
