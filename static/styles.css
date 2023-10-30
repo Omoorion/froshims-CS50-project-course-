@@ -3,7 +3,7 @@ body
     background-color: brown;
 }
 
-p, h1 
+p, h1, ul 
 {
     color: white;
 }

@@ -8,6 +8,10 @@
             <br />
             <a href="/logout">Log out</a>.
         </p>
+        {% if session["name"] == "Omoor" %}
+            <p>You are an Admin.</p>
+            <p>See other <a href="/registrants">registrants<a>.</p>
+        {% endif %}
     {% else  %}
         <p>
             You are not logged in.

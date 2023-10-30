@@ -1,10 +1,8 @@
+import sqlite3
 from decouple import config
-import re
-
-from flask import Flask, redirect, render_template, request, session
+from flask import Flask, jsonify, redirect, render_template, request, session
 from flask_session import Session
 from flask_mail import Mail, Message
-from cs50 import SQL
 
 app = Flask(__name__)
 
@@ -21,9 +19,6 @@ app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
-
-db = SQL("sqlite:///froshims.db")
-
 SPORTS = [
     "Basketball",
     "Football",
@@ -36,8 +31,10 @@ def index():
     if not session.get("name"):
         return redirect("/login")
     if not session.get("sport"):
-        sportDb = db.execute("SELECT sport FROM registrants WHERE name = ?", session.get("name"))
-
+        conn = sqlite3.connect('froshims.db', check_same_thread=False)
+        cursor = conn.cursor()
+        sportDb = cursor.execute("SELECT sport FROM registrants WHERE name = ?", (session.get("name"),))
+        conn.close()
         sportValue = ""
         for sport in SPORTS:
             if sport in str(sportDb):
@@ -51,7 +48,10 @@ def index():
 def login():
     if request.method == "POST":
         name = request.form.get("name")
-        isName = db.execute("SELECT name FROM registrants WHERE name= ?", name)
+        conn = sqlite3.connect('froshims.db', check_same_thread=False)
+        cursor = conn.cursor()
+        isName = cursor.execute("SELECT name FROM registrants WHERE name= ?", (name,))
+        conn.close()
         print(isName)
         if isName is not None and isName != []:
             session["name"] = name
@@ -64,12 +64,6 @@ def logout():
     session["name"] = None
     return redirect("/")
 
-@app.route("/deregister", methods=["POST"])
-def deregister():
-    id = request.form.get("id")
-    if id:
-        db.execute("DELETE FROM registrants WHERE id = ?", id)
-    return redirect("/registrants")
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -83,9 +77,11 @@ def register():
     
         message = Message("you are registered!", recipients=[email])
         mail.send(message)
-    
-        db.execute("INSERT INTO registrants (name, sport) VALUES(?, ?)", name, sport)
-
+        conn = sqlite3.connect('froshims.db', check_same_thread=False)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO registrants (name, sport) VALUES(?, ?)", (name, sport, ))
+        conn.commit()
+        conn.close()
         session["name"] = name
         session["sport"] = sport
 
@@ -93,10 +89,43 @@ def register():
     
     return render_template("register.html", sports=SPORTS)
 
+@app.route("/deregister", methods=["POST"])
+def deregister():
+    id = request.form.get("id")
+    print(id)
+    if id:
+        print("id exists")
+        conn = sqlite3.connect('froshims.db', check_same_thread=False)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM registrants WHERE id = ?;", (id,))
+        conn.commit()
+        conn.close()
+    return redirect("/registrants")
+
 @app.route("/registrants")
 def registrants():
     if not session.get("name") or session.get("name") != "Omoor":
         return redirect("/")
-    
-    registrants = db.execute("SELECT * FROM registrants")
+    conn = sqlite3.connect('froshims.db', check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM registrants")
+    columns = [column[0] for column in cursor.description]
+    registrants = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    conn.close()
     return render_template("registrants.html", registrants=registrants)
+
+@app.route("/search")
+def search():
+    conn = sqlite3.connect('froshims.db', check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM registrants WHERE name LIKE ?", ('%' + request.args.get('q') + '%',))
+    columns = [column[0] for column in cursor.description]
+    data = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    conn.close()
+    registrants=str(jsonify(data).data)[2:-3]
+    return registrants
+
+@app.route("/autosearch")
+def autosearch():
+    return render_template("autosearch.html")
+    
